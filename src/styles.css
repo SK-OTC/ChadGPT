@@ -1,0 +1,111 @@
+body {
+    background: linear-gradient(135deg, #E8F4F8 0%, #FFFEF0 50%, #FFE8E8 100%) !important;
+}
+.search-box {
+    width: 100%;
+    max-width: 500px;
+    padding: 10px 14px;
+    font-size: 14px;
+    border: 2px solid rgba(168, 216, 232, 0.4);
+    border-radius: 8px;
+    margin: 15px auto;
+    transition: all 0.3s ease;
+    font-family: inherit;
+    background: rgba(255, 255, 255, 0.9);
+    color: #2c3e50;
+}
+.search-box:focus {
+    outline: none;
+    border-color: var(--chad-pastel-red);
+    box-shadow: 0 0 10px rgba(255, 179, 179, 0.3);
+}
+.card a {
+    display: inline-block;
+    margin-top: 10px;
+    padding: 8px 16px;
+    background: var(--chad-pastel-blue);
+    color: white;
+    text-decoration: none;
+    border-radius: 6px;
+    transition: all 0.3s ease;
+    font-weight: 600;
+    cursor: pointer;
+}
+.card:nth-child(2) a {
+    background: var(--chad-pastel-yellow);
+    color: #333;
+}
+.card:nth-child(3) a {
+    background: var(--chad-pastel-red);
+    color: white;
+}
+.card a:hover {
+    transform: scale(1.08);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+.card h2 {
+    color: #2c3e50;
+    margin: 0 0 10px 0;
+}
+.card p {
+    margin: 0;
+    color: #555;
+}
+.hero > p {
+    color: black;
+}
+.hero > a {
+    display: block;
+    text-align: center;
+    color: var(--chad-pastel-blue);
+    text-decoration: none;
+    font-weight: 600;
+    margin: 10px 0;
+    transition: all 0.3s ease;
+}
+.hero > a:hover {
+    color: var(--chad-pastel-red);
+    text-decoration: underline;
+}
+/* Mobile Responsive Styles */
+@media (max-width: 768px) {
+    .app {
+        padding: 1rem !important;
+    }
+    h1 {
+        font-size: 1.8em !important;
+    }
+    .info-cards {
+        flex-direction: column;
+        gap: 1rem;
+    }
+    .card {
+        width: 100%;
+    }
+    .search-box {
+        font-size: 16px;
+        padding: 10px 12px;
+    }
+}
+@media (max-width: 480px) {
+    .app {
+        padding: 0.75rem !important;
+    }
+    h1 {
+        font-size: 1.4em !important;
+    }
+    .hero > p {
+        font-size: 0.95em;
+    }
+    .card h2 {
+        font-size: 1.1em;
+    }
+    .card a {
+        padding: 6px 12px;
+        font-size: 0.9em;
+    }
+    .search-box {
+        padding: 8px 10px;
+        font-size: 14px;
+    }
+}

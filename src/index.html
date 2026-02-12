@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChadGPT - Discover Chad</title>
+    <link rel="stylesheet" href="index.css">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="app">
+        <div class="hero">
+            <h1>Discover Chad</h1>
+            <p>Not the site you were looking for? Maybe you meant:</p>
+            <a href="https://openai.com/chatgpt">ChatGPT</a>
+            <input type="text" id="searchBox" class="search-box" placeholder="Fun facts about Chad, National animal of Chad, Is Chad a landlocked country?" />
+            <div id="searchResult" style="margin-top: 10px; color: #2c3e50; min-height: 20px;"></div>
+        </div>
+        <div class="info-cards">
+            <div class="card">
+                <h2>Geography</h2>
+                <p>Explore the Sahara Desert and Lake Chad</p>
+                <a href="#" onclick="handleCardClick('Geography'); return false;">Take me there!</a>
+            </div>
+            <div class="card">
+                <h2>Culture</h2>
+                <p>Discover traditional music and festivals</p>
+                <a href="#" onclick="handleCardClick('Culture'); return false;">Take me there!</a>
+            </div>
+            <div class="card">
+                <h2>General Info</h2>
+                <p>Learn about the nation and its people</p>
+                <a href="#" onclick="handleCardClick('General Info'); return false;">Take me there!</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const chadFacts = {
+            general: [
+                "Chad is located in Central Africa",
+                "The capital of Chad is N'Djamena",
+                "Chad has a population of over 17 million people",
+                "The official languages are French and Arabic"
+            ],
+            geography: [
+                "Chad covers an area of 1.284 million square kilometers",
+                "Lake Chad is one of Africa's largest lakes",
+                "The Sahara Desert covers the northern part of Chad",
+                "The climate varies from desert in the north to tropical in the south"
+            ],
+            culture: [
+                "Music is an essential part of Chad's culture",
+                "Traditional dances include the 'Gumbe' and 'Soudja'",
+                "The national dish is often a meat and grain-based meal",
+                "Hospitality is a core value in Chadian society"
+            ]
+        };
+
+        const searchPlaceholders = [
+            "Fun facts about Chad",
+            "National animal of Chad",
+            "Is Chad a landlocked country?",
+            "What is the currency of Chad?",
+            "Population of Chad",
+            "Capital of Chad"
+        ];
+
+        let currentPlaceholderIndex = 0;
+        const searchBox = document.getElementById('searchBox');
+        const searchResult = document.getElementById('searchResult');
+
+        // Shuffle placeholders on input focus
+        searchBox.addEventListener('focus', () => {
+            currentPlaceholderIndex = (currentPlaceholderIndex + 1) % searchPlaceholders.length;
+            searchBox.placeholder = searchPlaceholders[currentPlaceholderIndex];
+        });
+
+        // Search functionality
+        searchBox.addEventListener('input', (e) => {
+            const query = e.target.value.toLowerCase();
+            if (!query) {
+                searchResult.textContent = '';
+                return;
+            }
+
+            let result = '';
+            if (query.includes('animal')) {
+                result = '🦁 The lion is an iconic symbol of Chad';
+            } else if (query.includes('landlocked') || query.includes('ocean')) {
+                result = '✓ Yes, Chad is a landlocked country in Central Africa';
+            } else if (query.includes('currency') || query.includes('money')) {
+                result = '💰 The currency of Chad is the Central African CFA franc (XAF)';
+            } else if (query.includes('population')) {
+                result = '👥 Chad has a population of approximately 17.6 million people';
+            } else if (query.includes('capital')) {
+                result = '🏛️ The capital of Chad is N\'Djamena';
+            } else if (query.includes('fact') || query.includes('interesting')) {
+                result = '📍 Chad is home to diverse ethnic groups and rich traditions';
+            }
+
+            searchResult.textContent = result;
+        });
+
+        function handleCardClick(cardType) {
+            const facts = chadFacts[cardType.toLowerCase()];
+            const randomFact = facts[Math.floor(Math.random() * facts.length)];
+            alert(`${cardType}:\n\n${randomFact}`);
+        }
+
+        // Initialize with random placeholder
+        searchBox.placeholder = searchPlaceholders[Math.floor(Math.random() * searchPlaceholders.length)];
+    </script>
+</body>
+</html>
