@@ -19,6 +19,7 @@ body {
   min-height: 100vh;
   position: relative;
   background: #ffffff;
+  padding-left: 240px; /* reserve space for sidebar */
 }
 body::before {
   content: "";
@@ -31,6 +32,32 @@ body::before {
   transform: rotate(-12deg) scale(1.35);
   animation: slide 30s linear infinite;
   pointer-events: none;
+}
+
+/* Left sidebar */
+.sidebar {
+  position: fixed;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 220px;
+  padding: 2rem 1rem;
+  background: #ffffff;
+  border-right: 1px solid var(--border-color);
+  box-shadow: 2px 0 8px rgba(0,0,0,0.04);
+  z-index: 2;
+  display: flex;
+  align-items: flex-start;
+}
+.sidebar nav ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.sidebar-item {
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 1rem;
 }
 @keyframes slide {
   from {
@@ -86,11 +113,12 @@ body::before {
   }
 }
 h1 {
+  font-family: Inter, system-ui, 'Segoe UI', Roboto, -apple-system, sans-serif;
   font-size: 3.5em;
   font-weight: 800;
   line-height: 1.1;
   color: var(--text-primary);
-  margin: 0 0 0.5rem 0;
+  margin: 0 0 0.25rem 0;
   letter-spacing: -0.02em;
 }
 
@@ -101,21 +129,27 @@ h1 {
 .hero > p {
   font-size: 1.1em;
   color: var(--text-secondary);
-  margin: 0.5rem 0 2rem 0;
+  margin: 0.5rem 0 0.5rem 0;
 }
 .hero > a {
   display: block;
   width: fit-content;
-  margin: 0 auto 0.5rem;
+  margin: 0 auto 0.25rem;
   color: var(--chad-blue);
   font-weight: 600;
   text-decoration: none;
-  transition: all 0.3s ease;
+  transition: all 0.2s ease;
+  padding: 0;
 }
 .hero > a:hover {
   color: var(--chad-red);
   text-decoration: underline;
 }
+
+/* Color the G, P, T letters to match Chad flag */
+.letter-g { color: var(--chad-blue); }
+.letter-p { color: var(--chad-yellow); }
+.letter-t { color: var(--chad-red); }
 code {
   background-color: #f3f4f6;
   padding: 0.2em 0.4em;
@@ -220,6 +254,12 @@ code {
   ::after {
     animation: none !important;
   }
+}
+
+/* Sidebar responsive: hide on small screens */
+@media (max-width: 768px) {
+  .sidebar { display: none; }
+  body { padding-left: 0; }
 }
 .info-cards {
     display: flex;
