@@ -1,13 +1,15 @@
 :root {
-  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
-  --chad-pastel-blue: #A8D8E8;
-  --chad-pastel-yellow: #FFF9A3;
-  --chad-pastel-red: #FFB3B3;
-  --chad-accent: #E8D4F8;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+  line-height: 1.6;
+  color-scheme: light;
+  color: #1a1a1a;
+  background-color: #ffffff;
+  --chad-blue: #3B82F6;
+  --chad-yellow: #FBBF24;
+  --chad-red: #EF4444;
+  --text-primary: #1f2937;
+  --text-secondary: #6b7280;
+  --border-color: #e5e7eb;
 }
 body {
   margin: 0;
@@ -16,7 +18,7 @@ body {
   min-width: 320px;
   min-height: 100vh;
   position: relative;
-  background: linear-gradient(135deg, var(--chad-pastel-blue) 0%, var(--chad-pastel-yellow) 50%, var(--chad-pastel-red) 100%);
+  background: #ffffff;
 }
 body::before {
   content: "";
@@ -39,18 +41,16 @@ body::before {
   }
 }
 .app {
-  max-width: 1280px;
+  max-width: 1200px;
+  width: 100%;
   margin: 0 auto;
-  padding: 2rem;
+  padding: 3rem 2rem;
   text-align: center;
   position: relative;
   z-index: 1;
-  background: rgba(255, 255, 255, 0.9);
-  border-radius: 16px;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
 }
 .logo-container {
-  display: flex;
+  display: none;
   justify-content: center;
   align-items: center;
   gap: 2rem;
@@ -86,16 +86,42 @@ body::before {
   }
 }
 h1 {
-  font-size: 3.2em;
+  font-size: 3.5em;
+  font-weight: 800;
   line-height: 1.1;
-  color: #2c3e50;
-  text-shadow: 2px 2px 4px rgba(255, 179, 179, 0.3);
+  color: var(--text-primary);
+  margin: 0 0 0.5rem 0;
+  letter-spacing: -0.02em;
+}
+
+.hero {
+  margin-bottom: 3rem;
+  padding: 2rem 0;
+}
+.hero > p {
+  font-size: 1.1em;
+  color: var(--text-secondary);
+  margin: 0.5rem 0 2rem 0;
+}
+.hero > a {
+  display: block;
+  width: fit-content;
+  margin: 0 auto 0.5rem;
+  color: var(--chad-blue);
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 0.3s ease;
+}
+.hero > a:hover {
+  color: var(--chad-red);
+  text-decoration: underline;
 }
 code {
-  background-color: #1a1a1a;
+  background-color: #f3f4f6;
   padding: 0.2em 0.4em;
   border-radius: 0.3em;
-  font-family: monospace;
+  font-family: 'Courier New', monospace;
+  color: var(--chad-red);
 }
 .api-tester {
   margin: 2rem auto 0;

@@ -1,72 +1,131 @@
 body {
-    background: linear-gradient(135deg, #E8F4F8 0%, #FFFEF0 50%, #FFE8E8 100%) !important;
+    background: #ffffff !important;
 }
 .search-box {
     width: 100%;
-    max-width: 500px;
-    padding: 10px 14px;
-    font-size: 14px;
-    border: 2px solid rgba(168, 216, 232, 0.4);
-    border-radius: 8px;
-    margin: 15px auto;
+    max-width: 600px;
+    padding: 12px 16px;
+    font-size: 15px;
+    border: 2px solid var(--border-color);
+    border-radius: 10px;
+    margin: 20px auto;
     transition: all 0.3s ease;
     font-family: inherit;
-    background: rgba(255, 255, 255, 0.9);
-    color: #2c3e50;
+    background: #ffffff;
+    color: var(--text-primary);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 .search-box:focus {
     outline: none;
-    border-color: var(--chad-pastel-red);
-    box-shadow: 0 0 10px rgba(255, 179, 179, 0.3);
+    border-color: var(--chad-blue);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1), 0 4px 12px rgba(59, 130, 246, 0.15);
 }
 .card a {
     display: inline-block;
-    margin-top: 10px;
-    padding: 8px 16px;
-    background: var(--chad-pastel-blue);
+    margin-top: 1rem;
+    padding: 10px 20px;
+    background: var(--card-color);
     color: white;
     text-decoration: none;
-    border-radius: 6px;
+    border-radius: 8px;
     transition: all 0.3s ease;
     font-weight: 600;
+    font-size: 0.95em;
     cursor: pointer;
+    border: none;
 }
 .card:nth-child(2) a {
-    background: var(--chad-pastel-yellow);
-    color: #333;
-}
-.card:nth-child(3) a {
-    background: var(--chad-pastel-red);
-    color: white;
+    color: #1a1a1a;
 }
 .card a:hover {
-    transform: scale(1.08);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
 }
 .card h2 {
-    color: #2c3e50;
-    margin: 0 0 10px 0;
+    color: var(--text-primary);
+    margin: 0 0 0.75rem 0;
+    font-size: 1.5em;
+    font-weight: 700;
 }
 .card p {
     margin: 0;
-    color: #555;
+    color: var(--text-secondary);
+    font-size: 0.95em;
+    line-height: 1.6;
 }
-.hero > p {
-    color: black;
+.info-cards {
+    display: flex;
+    justify-content: center;
+    gap: 1.5rem;
+    margin-top: 2rem;
+    flex-wrap: wrap;
 }
-.hero > a {
-    display: block;
+.card {
+    flex: 1;
+    min-width: 280px;
+    max-width: 380px;
+    padding: 2rem;
+    border-radius: 16px;
     text-align: center;
-    color: var(--chad-pastel-blue);
-    text-decoration: none;
-    font-weight: 600;
-    margin: 10px 0;
     transition: all 0.3s ease;
+    background: #ffffff;
+    border: 2px solid;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+    position: relative;
+    overflow: hidden;
 }
-.hero > a:hover {
-    color: var(--chad-pastel-red);
-    text-decoration: underline;
+.card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--card-color), var(--card-color));
 }
+.card:nth-child(1) {
+    border-color: var(--chad-blue);
+    --card-color: var(--chad-blue);
+}
+.card:nth-child(1)::before {
+    background: var(--chad-blue);
+}
+.card:nth-child(2) {
+    border-color: var(--chad-yellow);
+    --card-color: var(--chad-yellow);
+}
+.card:nth-child(2)::before {
+    background: var(--chad-yellow);
+}
+.card:nth-child(3) {
+    border-color: var(--chad-red);
+    --card-color: var(--chad-red);
+}
+.card:nth-child(3)::before {
+    background: var(--chad-red);
+}
+.card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+    border-color: var(--card-color);
+}
+#searchResult {
+    font-weight: 500;
+    color: var(--text-primary);
+    font-size: 1.05em;
+    animation: fadeIn 0.3s ease;
+}
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-5px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
 /* Mobile Responsive Styles */
 @media (max-width: 768px) {
     .app {
