@@ -19,7 +19,7 @@ body {
   min-height: 100vh;
   position: relative;
   background: #ffffff;
-  padding-left: 240px; /* reserve space for sidebar */
+  padding-left: 300px; /* reserve space for wider sidebar */
 }
 body::before {
   content: "";
@@ -40,11 +40,11 @@ body::before {
   left: 0;
   top: 0;
   bottom: 0;
-  width: 220px;
-  padding: 2rem 1rem;
+  width: 300px;
+  padding: 2.5rem 1.25rem;
   background: #ffffff;
   border-right: 1px solid var(--border-color);
-  box-shadow: 2px 0 8px rgba(0,0,0,0.04);
+  box-shadow: 2px 0 12px rgba(0,0,0,0.05);
   z-index: 2;
   display: flex;
   align-items: flex-start;
@@ -53,11 +53,14 @@ body::before {
   list-style: none;
   padding: 0;
   margin: 0;
+  width: 100%;
 }
 .sidebar-item {
+  text-align: center;
   font-weight: 700;
   color: var(--text-primary);
   margin-bottom: 1rem;
+  width: 100%;
 }
 @keyframes slide {
   from {
@@ -113,9 +116,9 @@ body::before {
   }
 }
 h1 {
-  font-family: Inter, system-ui, 'Segoe UI', Roboto, -apple-system, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto Light', 'Oxygen', 'Ubuntu Light', 'Cantarell Light', sans-serif;
   font-size: 3.5em;
-  font-weight: 800;
+  font-weight: 400;
   line-height: 1.1;
   color: var(--text-primary);
   margin: 0 0 0.25rem 0;
@@ -262,33 +265,28 @@ code {
   body { padding-left: 0; }
 }
 .info-cards {
-    display: flex;
-    justify-content: space-around;
-    margin-top: 20px;
-    gap: 1rem;
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 1.5rem;
+  flex-wrap: wrap;
 }
 .card {
-    width: 30%;
-    padding: 20px;
-    border-radius: 12px;
-    text-align: center;
-    transition: transform 0.2s, box-shadow 0.2s;
-    background: rgba(255, 255, 255, 0.85);
-    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+  flex: 0 1 300px;
+  min-width: 220px;
+  max-width: 320px;
+  padding: 1.25rem;
+  border-radius: 12px;
+  text-align: center;
+  transition: transform 0.2s, box-shadow 0.2s;
+  background: #ffffff;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06);
+  border: 2px solid var(--border-color);
 }
-.card:nth-child(1) {
-    border: 3px solid var(--chad-pastel-blue);
-    background: linear-gradient(135deg, rgba(168, 216, 232, 0.2), rgba(168, 216, 232, 0.05));
-}
-.card:nth-child(2) {
-    border: 3px solid var(--chad-pastel-yellow);
-    background: linear-gradient(135deg, rgba(255, 249, 163, 0.2), rgba(255, 249, 163, 0.05));
-}
-.card:nth-child(3) {
-    border: 3px solid var(--chad-pastel-red);
-    background: linear-gradient(135deg, rgba(255, 179, 179, 0.2), rgba(255, 179, 179, 0.05));
-}
+.card:nth-child(1) { border-color: var(--chad-blue); }
+.card:nth-child(2) { border-color: var(--chad-yellow); }
+.card:nth-child(3) { border-color: var(--chad-red); }
 .card:hover {
-    transform: translateY(-8px);
-    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
+  transform: translateY(-6px);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.10);
 }
