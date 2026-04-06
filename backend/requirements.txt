@@ -1,5 +1,6 @@
 flask
 flask-cors
+python-dotenv
 requests
 langchain>=0.3
 langchain-community>=0.3

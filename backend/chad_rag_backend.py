@@ -22,14 +22,9 @@ from graph_rag import get_graph_rag, init_graph_rag_async
 from data_analysis import get_charts_for_topic
 from web_search import needs_web_search, search_web
 
-# Load .env from project root (one level above backend/)
-_ENV_PATH = Path(__file__).resolve().parent.parent / '.env'
-load_dotenv(_ENV_PATH)
-
+load_dotenv(Path(__file__).resolve().parent.parent / '.env')
 OPENROUTER_API_KEY = os.getenv('OPENROUTER_API_KEY', '')
-if not OPENROUTER_API_KEY:
-    print('WARNING: OPENROUTER_API_KEY is not set. LLM calls will fail.')
-OPENROUTER_MODEL = os.getenv('OPENROUTER_MODEL', 'nvidia/nemotron-3-super-120b-a12b:free')
+OPENROUTER_MODEL = 'nvidia/nemotron-3-super-120b-a12b:free'
 
 app = Flask(__name__)
 CORS(app, resources={
@@ -225,7 +220,5 @@ if _is_reloader_child or _is_direct_run:
 
 
 if __name__ == '__main__':
-    debug = os.getenv('FLASK_DEBUG', 'false').lower() in ('1', 'true', 'yes')
-    port = int(os.getenv('PORT', '8000'))
-    print(f"ChadGPT backend — http://localhost:{port}")
-    app.run(debug=debug, host='0.0.0.0', port=port)
+    print("ChadGPT backend — http://localhost:8000")
+    app.run(debug=True, host="0.0.0.0", port=8000)

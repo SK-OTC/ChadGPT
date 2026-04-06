@@ -27,10 +27,7 @@ import numpy as np
 from pathlib import Path
 from dotenv import load_dotenv
 
-# Load .env from project root (one level above backend/)
-_ENV_PATH = Path(__file__).resolve().parent.parent / '.env'
-load_dotenv(_ENV_PATH)
-
+load_dotenv(Path(__file__).resolve().parent.parent / '.env')
 HF_TOKEN = os.environ.get('HF_TOKEN')
 EMBED_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
 CACHE_FILE = os.path.join(os.path.dirname(__file__), "graph_cache.pkl")
