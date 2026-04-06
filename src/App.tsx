@@ -1,20 +1,30 @@
-// import { APITester } from "./APITester";
-import "./index.css";
-
-import logo from "./flag.svg";
+import { useHomeController } from "./controllers/useHomeController";
+import { Hero } from "./components/Hero";
+import { InfoCards } from "./components/InfoCards";
+import { ResultsPanel } from "./components/ResultsPanel";
+import { Sidebar } from "./components/Sidebar";
 
 export function App() {
-  return (
-    <div className="app">
-      <img src={logo} className="logo" alt="logo" />
-
-      <h1>Bun + React</h1>
-      <p>
-        Edit <code>src/App.tsx</code> and save to test HMR
-      </p>
-      {/* <APITester /> */}
-    </div>
+  const ctrl = useHomeController();
+  
+  return ( 
+    <>
+      <Sidebar />
+      <div className="app">
+        <Hero onSearch={ctrl.search} isLoading={ctrl.isLoading} />
+        <InfoCards onCardClick={ctrl.search} />
+      </div>
+      <ResultsPanel
+        visible={ctrl.overlayVisible}
+        question={ctrl.question}
+        highlights={ctrl.highlights}
+        charts={ctrl.charts}
+        conversation={ctrl.conversation}
+        chatInput={ctrl.chatInput}
+        onChatInputChange={ctrl.setChatInput}
+        onChatSubmit={ctrl.sendChatMessage}
+        onClose={ctrl.closeOverlay}
+      />
+    </>
   );
 }
-
-export default App;

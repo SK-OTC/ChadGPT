@@ -2,6 +2,7 @@
 node_modules
 
 src/APITester.tsx
+src/notes.txt
 # output
 out
 dist
@@ -33,3 +34,9 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 
 # Finder (MacOS) folder config
 .DS_Store
+
+# Python virtual environments
+venv/
+.venv/
+__pycache__/
+*.pyc

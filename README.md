@@ -1,21 +1,57 @@
-# bun-react-template
+# ChadGPT
 
-To install dependencies:
+Bun frontend + Python backend for Chad-focused Q&A using a local RAG knowledge base, with optional OpenRouter integration.
+
+## Prerequisites
+
+- Bun
+- Python 3.8+
+
+## Install
 
 ```bash
 bun install
+python3 -m pip install -r backend/requirements.txt
 ```
 
-To start a development server:
+If your system blocks global `pip` installs (PEP 668), use a virtual environment:
 
 ```bash
-bun dev
+python3 -m venv backend/.venv
+backend/.venv/bin/python -m pip install -r backend/requirements.txt
 ```
 
-To run for production:
+## Run
+
+Start frontend and backend together via Bun:
 
 ```bash
-bun start
+bun run dev
 ```
 
-This project was created using `bun init` in bun v1.3.9. [Bun](https://bun.com) is a fast all-in-one JavaScript runtime.
+Or run each side separately:
+
+```bash
+bun run dev:client
+bun run dev:server
+```
+
+## URLs
+
+- Frontend: `http://localhost:3000`
+- Backend: `http://localhost:8000`
+
+## Environment
+
+Optional OpenRouter API key:
+
+```bash
+export OPENROUTER_API_KEY="your-openrouter-key"
+```
+
+Without a key, the backend returns answers from the local RAG knowledge base.
+
+## API
+
+- `POST /api/ask` with `{ "question": "..." }`
+- `GET /api/knowledge`

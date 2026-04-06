@@ -1,0 +1,15 @@
+flask
+flask-cors
+requests
+langchain>=0.3
+langchain-community>=0.3
+langchain-text-splitters>=0.3
+sentence-transformers>=3.0
+networkx>=3.0
+wikipedia>=1.4
+numpy
+spacy>=3.7
+pandas
+scikit-learn
+ddgs
+# After installing, run: python -m spacy download en_core_web_sm
