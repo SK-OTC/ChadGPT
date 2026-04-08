@@ -1,0 +1,23 @@
+group,label,percentage,color
+Ethnicity,Sara,27.7,#3B82F6
+Ethnicity,Arab,12.3,#F59E0B
+Ethnicity,Mayo-Kebbi,11.5,#10B981
+Ethnicity,Kanem-Bornou,9.0,#EF4444
+Ethnicity,Ouaddaï,8.7,#8B5CF6
+Ethnicity,Hadjarai,6.7,#06B6D4
+Ethnicity,Tandjilé,6.5,#EC4899
+Ethnicity,Gorane,6.3,#F97316
+Ethnicity,Fitri-Batha,4.7,#14B8A6
+Ethnicity,Other,6.6,#94A3B8
+Religion,Islam,52.1,#3B82F6
+Religion,Christianity,43.9,#F59E0B
+Religion,Traditional/Other,4.0,#10B981
+Language,French (official),30.0,#3B82F6
+Language,Arabic (official),60.0,#F59E0B
+Language,Sara languages,20.0,#10B981
+Language,Other local languages,40.0,#8B5CF6
+Age,0-14 years,47.2,#3B82F6
+Age,15-24 years,19.1,#10B981
+Age,25-54 years,27.0,#F59E0B
+Age,55-64 years,3.8,#8B5CF6
+Age,65+ years,2.9,#EF4444

@@ -13,4 +13,5 @@ spacy>=3.7
 pandas
 scikit-learn
 ddgs
+kaggle
 # After installing, run: python -m spacy download en_core_web_sm

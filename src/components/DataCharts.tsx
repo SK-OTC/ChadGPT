@@ -1,7 +1,7 @@
 // View sub-component — renders scikit-learn analysis results as SVG charts.
 // Supports line (with optional dashed trend), grouped bar, and scatter chart types.
 
-import type { ChartData, ChartSeries, ScatterPoint } from "../model/chad-data";
+import type { ChartData, ChartSeries, ScatterPoint, DonutSlice } from "../model/chad-data";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -56,9 +56,6 @@ function LineChart({ chart }: { chart: ChartData }) {
       .map((v, i) => `${i === 0 ? "M" : "L"}${xOf(i).toFixed(1)},${yOf(v).toFixed(1)}`)
       .join(" ");
 
-  // Legend entries (non-dashed only get dots; dashed = trend)
-  const legend = series;
-
   return (
     <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: "auto", display: "block" }} aria-label={chart.title}>
       {/* Horizontal grid */}
@@ -97,7 +94,7 @@ function LineChart({ chart }: { chart: ChartData }) {
         />
       ))}
       {/* Legend */}
-      {legend.map((s, i) => (
+      {series.map((s, i) => (
         <g key={i} transform={`translate(${ML + i * 140}, ${H - 6})`}>
           <line x1="0" y1="0" x2="16" y2="0" stroke={s.color} strokeWidth={s.dashed ? 1.8 : 2.5} strokeDasharray={s.dashed ? "4,3" : undefined} />
           <text x="20" y="4" fontSize="10" fill="#64748b">{s.label}</text>
@@ -245,15 +242,151 @@ function ScatterChart({ chart }: { chart: ChartData }) {
 }
 
 // ---------------------------------------------------------------------------
+// Donut chart
+// ---------------------------------------------------------------------------
+
+const DONUT_R = 72;
+const DONUT_R_INNER = 42;
+const DONUT_CX = 110;
+const DONUT_CY = 110;
+const DONUT_SVG = 220;
+
+function polarToCart(cx: number, cy: number, r: number, deg: number) {
+  const rad = ((deg - 90) * Math.PI) / 180;
+  return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
+}
+
+function DonutChart({ chart }: { chart: ChartData }) {
+  const slices = chart.slices ?? [];
+  if (!slices.length) return null;
+
+  const total = slices.reduce((s, d) => s + d.value, 0);
+  let cumAngle = 0;
+
+  const arcs = slices.map((sl) => {
+    const angle = (sl.value / total) * 360;
+    const start = cumAngle;
+    cumAngle += angle;
+    const end = cumAngle;
+    const large = angle > 180 ? 1 : 0;
+    const s1 = polarToCart(DONUT_CX, DONUT_CY, DONUT_R, start);
+    const s2 = polarToCart(DONUT_CX, DONUT_CY, DONUT_R, end);
+    const s3 = polarToCart(DONUT_CX, DONUT_CY, DONUT_R_INNER, end);
+    const s4 = polarToCart(DONUT_CX, DONUT_CY, DONUT_R_INNER, start);
+    const d = [
+      `M${s1.x},${s1.y}`,
+      `A${DONUT_R},${DONUT_R} 0 ${large} 1 ${s2.x},${s2.y}`,
+      `L${s3.x},${s3.y}`,
+      `A${DONUT_R_INNER},${DONUT_R_INNER} 0 ${large} 0 ${s4.x},${s4.y}`,
+      "Z",
+    ].join(" ");
+    return { ...sl, d, pct: ((sl.value / total) * 100).toFixed(1) };
+  });
+
+  return (
+    <div className="donut-chart-wrapper">
+      <svg viewBox={`0 0 ${DONUT_SVG} ${DONUT_SVG}`} style={{ width: 220, height: 220, display: "block" }} aria-label={chart.title}>
+        {arcs.map((a, i) => (
+          <path key={i} d={a.d} fill={a.color} stroke="#fff" strokeWidth="1.5">
+            <title>{`${a.label}: ${a.pct}%`}</title>
+          </path>
+        ))}
+        <text x={DONUT_CX} y={DONUT_CY - 4} textAnchor="middle" fontSize="12" fontWeight="600" fill="#334155">
+          {total.toFixed(0)}%
+        </text>
+        <text x={DONUT_CX} y={DONUT_CY + 10} textAnchor="middle" fontSize="9" fill="#64748b">
+          Total
+        </text>
+      </svg>
+      <div className="donut-legend">
+        {arcs.map((a, i) => (
+          <div key={i} className="donut-legend-item">
+            <span className="donut-legend-swatch" style={{ background: a.color }} />
+            <span className="donut-legend-label">{a.label}</span>
+            <span className="donut-legend-pct">{a.pct}%</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Horizontal bar chart
+// ---------------------------------------------------------------------------
+
+const HBAR_H_PER_ROW = 28;
+const HBAR_ML = 120;
+const HBAR_MR = 40;
+const HBAR_W = 620;
+
+function HorizontalBarChart({ chart }: { chart: ChartData }) {
+  const categories = chart.categories ?? [];
+  const values = chart.values ?? [];
+  const colors = chart.colors ?? [];
+  if (!categories.length) return null;
+
+  const maxVal = Math.max(...values);
+  const barAreaW = HBAR_W - HBAR_ML - HBAR_MR;
+  const svgH = categories.length * HBAR_H_PER_ROW + 20;
+
+  return (
+    <svg viewBox={`0 0 ${HBAR_W} ${svgH}`} style={{ width: "100%", height: "auto", display: "block" }} aria-label={chart.title}>
+      {categories.map((cat, i) => {
+        const val = values[i] ?? 0;
+        const barW = (val / maxVal) * barAreaW;
+        const y = i * HBAR_H_PER_ROW + 10;
+        const isHighlight = chart.highlight && cat === chart.highlight;
+        return (
+          <g key={i}>
+            <text x={HBAR_ML - 8} y={y + 14} textAnchor="end" fontSize="11" fill={isHighlight ? "#e11d48" : "#475569"} fontWeight={isHighlight ? "700" : "400"}>
+              {cat}
+            </text>
+            <rect x={HBAR_ML} y={y + 2} width={Math.max(barW, 2)} height={18} fill={colors[i] || "#6366F1"} rx="3" opacity={isHighlight ? 1 : 0.85}>
+              <title>{`${cat}: ${val}`}</title>
+            </rect>
+            <text x={HBAR_ML + barW + 5} y={y + 15} fontSize="10" fill="#64748b" fontWeight="500">
+              {fmtNum(val)}
+            </text>
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Public component
 // ---------------------------------------------------------------------------
 
 interface DataChartsProps {
   charts: ChartData[];
   source?: string;
+  isLoading?: boolean;
 }
 
-export function DataCharts({ charts, source }: DataChartsProps) {
+export function DataCharts({ charts, source, isLoading = false }: DataChartsProps) {
+  if (isLoading) {
+    return (
+      <section className="analysis-section">
+        <div className="analysis-header">
+          <span className="analysis-label">Data Analysis</span>
+          <span className="analysis-source">Fetching visualizations…</span>
+        </div>
+        <div className="analysis-charts-grid">
+          {[0, 1, 2, 3].map((i) => (
+            <div className="analysis-chart-card chart-skeleton" key={i}>
+              <div className="skeleton-title" />
+              <div className="skeleton-subtitle" />
+              <div className="skeleton-chart-area" />
+              <div className="skeleton-insight" />
+            </div>
+          ))}
+        </div>
+      </section>
+    );
+  }
+
   if (!charts?.length) return null;
 
   return (
@@ -273,6 +406,8 @@ export function DataCharts({ charts, source }: DataChartsProps) {
               {chart.type === "line" && <LineChart chart={chart} />}
               {chart.type === "bar" && <BarChart chart={chart} />}
               {chart.type === "scatter" && <ScatterChart chart={chart} />}
+              {chart.type === "donut" && <DonutChart chart={chart} />}
+              {chart.type === "hbar" && <HorizontalBarChart chart={chart} />}
             </div>
             <div className="analysis-axis-labels">
               <span>{chart.y_label}</span>

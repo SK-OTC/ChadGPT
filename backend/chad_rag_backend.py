@@ -24,7 +24,37 @@ from web_search import needs_web_search, search_web
 
 load_dotenv(Path(__file__).resolve().parent.parent / '.env')
 OPENROUTER_API_KEY = os.getenv('OPENROUTER_API_KEY', '')
-OPENROUTER_MODEL = 'nvidia/nemotron-3-super-120b-a12b:free'
+OPENROUTER_MODELS = [
+    'nvidia/nemotron-3-super-120b-a12b:free',
+    'meta-llama/llama-3.3-70b-instruct:free',
+    'mistralai/mistral-7b-instruct:free',
+]
+
+# Reusable HTTP session for connection pooling
+_session = requests.Session()
+_session.headers.update({
+    'Authorization': f'Bearer {OPENROUTER_API_KEY}',
+    'Content-Type': 'application/json',
+    'HTTP-Referer': 'https://chadgpt.local',
+    'X-Title': 'Chad Graph RAG',
+})
+
+
+def _parse_llm_response(raw: str) -> tuple[str, str | None]:
+    """Extract (clean_answer, topic_title) from raw LLM text.
+
+    The LLM is instructed to append:
+        Source: <article title>
+        Topic: <2-5 word summary>
+    This function strips the Topic line and returns it separately.
+    """
+    topic: str | None = None
+    topic_match = re.search(r'\nTopic:\s*(.+)', raw)
+    if topic_match:
+        topic = topic_match.group(1).strip()
+        raw = raw[:topic_match.start()].rstrip()
+    return raw.strip(), topic
+
 
 app = Flask(__name__)
 CORS(app, resources={
@@ -79,6 +109,7 @@ def graph_ask():
     if not is_about_chad(question):
         return jsonify({
             'answer': "I'm specialized in providing information about Chad only.",
+            'title': None,
             'sources': [],
             'graph_sources': [],
         })
@@ -89,6 +120,7 @@ def graph_ask():
     if not graph_rag.ready:
         return jsonify({
             'answer': 'The knowledge graph is still initializing. Please try again in a moment.',
+            'title': None,
             'sources': [],
             'graph_sources': [],
             'web_sources': [],
@@ -123,56 +155,56 @@ def graph_ask():
         "- Do NOT list the rules you are following.\n"
         "- ONLY answer questions about Chad. If asked about other topics, say so briefly.\n"
         "- After your answer, cite your source on a new line in the format: Source: <title>\n"
-       
+        "- After the source, write a 2-5 word topic title on a new line in the format: Topic: <title>\n"
     )
 
     # Few-shot examples to enforce output format
     few_shot = [
         {'role': 'user', 'content': 'What is the capital of Chad?'},
-        {'role': 'assistant', 'content': "The capital of Chad is N'Djamena, located at the confluence of the Chari and Logone rivers near the western border with Cameroon.\n\nSource: Chad (Wikipedia)"},
+        {'role': 'assistant', 'content': "The capital of Chad is N'Djamena, located at the confluence of the Chari and Logone rivers near the western border with Cameroon.\n\nSource: Chad (Wikipedia)\nTopic: Capital city of Chad"},
         {'role': 'user', 'content': 'How big is Lake Chad?'},
-        {'role': 'assistant', 'content': "Lake Chad was once one of Africa's largest lakes, covering around 25,000 km² in the 1960s, but has shrunk by roughly 90% due to climate change and water diversion. Today it covers approximately 1,350 km².\n\nSource: Lake Chad (Wikipedia)"},
+        {'role': 'assistant', 'content': "Lake Chad was once one of Africa's largest lakes, covering around 25,000 km² in the 1960s, but has shrunk by roughly 90% due to climate change and water diversion. Today it covers approximately 1,350 km².\n\nSource: Lake Chad (Wikipedia)\nTopic: Lake Chad size and shrinkage"},
         {'role': 'user', 'content': 'Tell me about France.'},
-        {'role': 'assistant', 'content': "I'm specialized in providing information about Chad only. However, France has a significant historical connection to Chad as the former colonial power — Chad gained independence from France on August 11, 1960.\n\nSource: History of Chad (Wikipedia)"},
+        {'role': 'assistant', 'content': "I'm specialized in providing information about Chad only. However, France has a significant historical connection to Chad as the former colonial power — Chad gained independence from France on August 11, 1960.\n\nSource: History of Chad (Wikipedia)\nTopic: Chad independence from France"},
     ]
 
     messages = [
         {'role': 'system', 'content': system_prompt + "\nKnowledge Base Context:\n" + context},
         *few_shot,
-        *[{'role': turn['role'], 'content': turn['content']} for turn in history if turn.get('role') in ('user', 'assistant')],
+        *[{'role': turn['role'], 'content': turn['content']} for turn in history[-10:] if turn.get('role') in ('user', 'assistant')],
         {'role': 'user', 'content': question},
     ]
 
-    try:
-        resp = requests.post(
-            'https://openrouter.ai/api/v1/chat/completions',
-            headers={
-                'Authorization': f'Bearer {OPENROUTER_API_KEY}',
-                'Content-Type': 'application/json',
-                'HTTP-Referer': 'https://chadgpt.local',
-                'X-Title': 'Chad Graph RAG',
-            },
-            json={
-                'model': OPENROUTER_MODEL,
-                'messages': messages,
-                'temperature': 0.2,
-                'max_tokens': 2048,
-            },
-            timeout=30,
-        )
-        if resp.status_code == 200:
-            body = resp.json()
-            if 'choices' in body and body['choices']:
-                answer = body['choices'][0].get('message', {}).get('content', '')
-                if answer:
-                    return jsonify({
-                        'answer': answer.strip(),
-                        'sources': list(seen_titles),
-                        'graph_sources': graph_sources,
-                        'web_sources': web_sources,
-                    })
-    except Exception as exc:
-        print(f'Graph-ask API error: {exc}')
+    for model in OPENROUTER_MODELS:
+        try:
+            resp = _session.post(
+                'https://openrouter.ai/api/v1/chat/completions',
+                json={
+                    'model': model,
+                    'messages': messages,
+                    'temperature': 0.2,
+                    'max_tokens': 2048,
+                },
+                timeout=30,
+            )
+            if resp.status_code == 402:
+                print(f'Graph-ask: {model} returned 402 (credit limit), trying next model.')
+                continue
+            if resp.status_code == 200:
+                body = resp.json()
+                if 'choices' in body and body['choices']:
+                    raw = body['choices'][0].get('message', {}).get('content', '')
+                    if raw:
+                        answer, title = _parse_llm_response(raw)
+                        return jsonify({
+                            'answer': answer,
+                            'title': title,
+                            'sources': list(seen_titles),
+                            'graph_sources': graph_sources,
+                            'web_sources': web_sources,
+                        })
+        except Exception as exc:
+            print(f'Graph-ask API error ({model}): {exc}')
 
     # Fallback: build answer from graph results directly
     answer = "Based on Wikipedia sources:\n\n"
@@ -181,6 +213,7 @@ def graph_ask():
         answer += '.'.join(sentences) + '.\n\n'
     return jsonify({
         'answer': answer.strip(),
+        'title': None,
         'sources': list(seen_titles),
         'graph_sources': graph_sources,
         'web_sources': web_sources,
@@ -201,10 +234,11 @@ def graph_refresh():
 
 @app.route('/api/analyze', methods=['GET'])
 def analyze():
-    """Return scikit-learn chart data for a given topic."""
+    """Return scikit-learn chart data for a given topic and optional raw query."""
     topic = request.args.get('topic', 'general').lower()
+    query = request.args.get('q', '').strip()
     try:
-        result = get_charts_for_topic(topic)
+        result = get_charts_for_topic(topic, query=query)
         return jsonify(result)
     except Exception as e:
         return jsonify({'error': str(e), 'charts': []}), 500

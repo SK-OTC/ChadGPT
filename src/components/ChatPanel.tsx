@@ -9,20 +9,21 @@ interface ChatPanelProps {
   inputValue: string;
   onInputChange: (value: string) => void;
   onSubmit: (message: string) => void;
+  isTyping?: boolean;
 }
 
-export function ChatPanel({ conversation, inputValue, onInputChange, onSubmit }: ChatPanelProps) {
+export function ChatPanel({ conversation, inputValue, onInputChange, onSubmit, isTyping = false }: ChatPanelProps) {
   const chatRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (chatRef.current) chatRef.current.scrollTop = chatRef.current.scrollHeight;
-  }, [conversation]);
+  }, [conversation, isTyping]);
 
   function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     onSubmit(inputValue);
   }
-  console.log(conversation);
+
   return (
     <div className="results-chat-panel">
       <div className="results-chat-messages" ref={chatRef}>
@@ -32,6 +33,14 @@ export function ChatPanel({ conversation, inputValue, onInputChange, onSubmit }:
             <div className="chat-text">{msg.content}</div>
           </article>
         ))}
+        {isTyping && (
+          <article className="chat-bubble assistant">
+            <p className="chat-role">ChadGPT</p>
+            <div className="chat-typing-indicator">
+              <span /><span /><span />
+            </div>
+          </article>
+        )}
       </div>
       <form className="results-chat-form" onSubmit={handleSubmit}>
         <input
@@ -40,8 +49,9 @@ export function ChatPanel({ conversation, inputValue, onInputChange, onSubmit }:
           autoComplete="off"
           value={inputValue}
           onChange={(e) => onInputChange(e.target.value)}
+          disabled={isTyping}
         />
-        <button type="submit">Send</button>
+        <button type="submit" disabled={isTyping}>Send</button>
       </form>
     </div>
   );

@@ -23,6 +23,7 @@ export type Message = { role: "user" | "assistant"; content: string };
 
 export type AskResponse = {
   answer?: string;
+  title?: string;
   sources?: string[];
   graph_sources?: { title: string; url: string }[];
   web_sources?: { title: string; url: string }[];
@@ -30,8 +31,9 @@ export type AskResponse = {
 
 export type ChartSeries = { label: string; data: number[]; color: string; dashed?: boolean };
 export type ScatterPoint = { x: number; y: number; year: number; cluster: number };
+export type DonutSlice = { label: string; value: number; color: string };
 export type ChartData = {
-  type: "line" | "bar" | "scatter";
+  type: "line" | "bar" | "scatter" | "donut" | "hbar";
   title: string;
   subtitle?: string;
   x_label: string;
@@ -40,6 +42,11 @@ export type ChartData = {
   labels?: (string | number)[];
   points?: ScatterPoint[];
   cluster_colors?: string[];
+  slices?: DonutSlice[];
+  categories?: string[];
+  values?: number[];
+  colors?: string[];
+  highlight?: string;
   insight: string;
 };
 export type AnalysisResponse = {
@@ -215,10 +222,25 @@ export async function askBackend(question: string, history: Message[] = []): Pro
   return response.json() as Promise<AskResponse>;
 }
 
-export async function fetchChartData(topic: string): Promise<AnalysisResponse> {
+export async function fetchChartData(topic: string, query = ""): Promise<AnalysisResponse> {
   const base = `http://${window.location.hostname}:8000`;
-  const response = await fetch(`${base}/api/analyze?topic=${encodeURIComponent(topic)}`);
+  let url = `${base}/api/analyze?topic=${encodeURIComponent(topic)}`;
+  if (query) url += `&q=${encodeURIComponent(query)}`;
+  const response = await fetch(url);
   if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
   return response.json() as Promise<AnalysisResponse>;
+}
+
+export type GraphStats = {
+  initialized: boolean;
+  chunks: number;
+  error?: string | null;
+};
+
+export async function fetchGraphStats(): Promise<GraphStats> {
+  const base = `http://${window.location.hostname}:8000`;
+  const response = await fetch(`${base}/api/graph-stats`);
+  if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+  return response.json() as Promise<GraphStats>;
 }
 

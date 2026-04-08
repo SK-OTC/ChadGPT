@@ -97,6 +97,7 @@ class ChadGraphRAG:
         self.chunks: list[str] = []
         self.chunk_metadata: list[dict] = []
         self.embeddings: np.ndarray | None = None
+        self.norm_embeddings: np.ndarray | None = None  # pre-normalized for fast cosine search
         self._entity_to_node: dict[str, int] = {}
         self._lock = threading.Lock()
         self._initialized = False
@@ -319,6 +320,8 @@ class ChadGraphRAG:
                         self.chunks = cache["chunks"]
                         self.chunk_metadata = cache["metadata"]
                         self.embeddings = cache["embeddings"].astype(np.float32)
+                        norms = np.linalg.norm(self.embeddings, axis=1, keepdims=True)
+                        self.norm_embeddings = self.embeddings / (norms + 1e-8)
                         self.graph = cache["graph"]
                         self._entity_to_node = cache.get("entity_to_node", {})
                         self._load_embedder()
@@ -358,6 +361,8 @@ class ChadGraphRAG:
                     self.embedder.encode(self.chunks, show_progress_bar=False),
                     dtype=np.float32,
                 )
+                norms = np.linalg.norm(self.embeddings, axis=1, keepdims=True)
+                self.norm_embeddings = self.embeddings / (norms + 1e-8)
 
                 print("Graph RAG: Building entity-relationship graph...")
                 self.graph = self._build_graph()
@@ -403,7 +408,7 @@ class ChadGraphRAG:
           4. Cross-country edges ensure related-country chunks surface
           5. Sequential 1-hop expansion for adjacent context
         """
-        if not self.chunks or self.embeddings is None:
+        if not self.chunks or self.embeddings is None or self.norm_embeddings is None:
             return []
 
         self._load_embedder()
@@ -413,10 +418,8 @@ class ChadGraphRAG:
             dtype=np.float32,
         )
 
-        emb_norms = np.linalg.norm(self.embeddings, axis=1, keepdims=True)
-        norm_embs = self.embeddings / (emb_norms + 1e-8)
         q_norm = q_emb / (np.linalg.norm(q_emb) + 1e-8)
-        scores = (norm_embs @ q_norm.T).flatten()
+        scores = (self.norm_embeddings @ q_norm.T).flatten()
 
         top_idx = np.argsort(scores)[::-1][:top_k]
         seed_set = {int(i) for i in top_idx}

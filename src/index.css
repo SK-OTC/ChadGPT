@@ -13,13 +13,13 @@
 }
 body {
   margin: 0;
-  display: grid;
-  place-items: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   min-width: 320px;
   min-height: 100vh;
-  position: relative;
   background: #ffffff;
-  padding-left: 300px; /* reserve space for wider sidebar */
 }
 body::before {
   content: "";
@@ -34,34 +34,6 @@ body::before {
   pointer-events: none;
 }
 
-/* Left sidebar */
-.sidebar {
-  position: fixed;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 300px;
-  padding: 2.5rem 1.25rem;
-  background: #ffffff;
-  border-right: 1px solid var(--border-color);
-  box-shadow: 2px 0 12px rgba(0,0,0,0.05);
-  z-index: 2;
-  display: flex;
-  align-items: flex-start;
-}
-.sidebar nav ul {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  width: 100%;
-}
-.sidebar-item {
-  text-align: center;
-  font-weight: 700;
-  color: var(--text-primary);
-  margin-bottom: 1rem;
-  width: 100%;
-}
 @keyframes slide {
   from {
     background-position: 0 0;
@@ -90,8 +62,7 @@ h1 {
 }
 
 .hero {
-  margin-bottom: 3rem;
-  padding: 2rem 0;
+  padding: 2rem 0 0 0;
 }
 .hero > p {
   font-size: 1.1em;
@@ -123,10 +94,4 @@ h1 {
   ::after {
     animation: none !important;
   }
-}
-
-/* Sidebar responsive: hide on small screens */
-@media (max-width: 768px) {
-  .sidebar { display: none; }
-  body { padding-left: 0; }
 }

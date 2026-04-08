@@ -7,9 +7,10 @@ import { SEARCH_PLACEHOLDERS } from "../model/chad-data";
 interface HeroProps {
   onSearch: (query: string) => void;
   isLoading: boolean;
+  statusMessage?: string | null;
 }
 
-export function Hero({ onSearch, isLoading }: HeroProps) {
+export function Hero({ onSearch, isLoading, statusMessage }: HeroProps) {
   const [value, setValue] = useState("");
   const [placeholderIdx, setPlaceholderIdx] = useState(
     () => Math.floor(Math.random() * SEARCH_PLACEHOLDERS.length),
@@ -49,11 +50,16 @@ export function Hero({ onSearch, isLoading }: HeroProps) {
         disabled={isLoading}
       />
       {isLoading && (
-        <div style={{ marginTop: 10, display: "inline-flex", gap: 8, alignItems: "center" }}>
-          <span style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--chad-blue)", animation: "pulse 1.4s infinite 0s" }} />
-          <span style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--chad-blue)", animation: "pulse 1.4s infinite 0.2s" }} />
-          <span style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--chad-blue)", animation: "pulse 1.4s infinite 0.4s" }} />
-          <style>{`@keyframes pulse { 0%,100% { opacity: .4 } 50% { opacity: 1 } }`}</style>
+        <div style={{ marginTop: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
+          <div style={{ display: "inline-flex", gap: 8, alignItems: "center" }}>
+            <span style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--chad-blue)", animation: "pulse 1.4s infinite 0s" }} />
+            <span style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--chad-blue)", animation: "pulse 1.4s infinite 0.2s" }} />
+            <span style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--chad-blue)", animation: "pulse 1.4s infinite 0.4s" }} />
+            <style>{`@keyframes pulse { 0%,100% { opacity: .4 } 50% { opacity: 1 } }`}</style>
+          </div>
+          {statusMessage && (
+            <span style={{ fontSize: "0.78rem", color: "var(--text-secondary)" }}>{statusMessage}</span>
+          )}
         </div>
       )}
     </div>

@@ -8,9 +8,12 @@ import { DataCharts } from "./DataCharts";
 interface ResultsPanelProps {
   visible: boolean;
   question: string;
+  title: string | null;
   highlights: string[];
   charts: ChartData[];
+  isChartsLoading: boolean;
   conversation: Message[];
+  isChatLoading: boolean;
   chatInput: string;
   onChatInputChange: (value: string) => void;
   onChatSubmit: (message: string) => void;
@@ -20,9 +23,12 @@ interface ResultsPanelProps {
 export function ResultsPanel({
   visible,
   question,
+  title,
   highlights,
   charts,
+  isChartsLoading,
   conversation,
+  isChatLoading,
   chatInput,
   onChatInputChange,
   onChatSubmit,
@@ -42,12 +48,12 @@ export function ResultsPanel({
             <div className="results-main-panel">
               <div className="question-card">
                 <div className="question-card-content">
-                  <h2>{question}</h2>
+                  <h2>{title ?? question}</h2>
                   <p>{highlights[0] ?? ""}</p>
                 </div>
               </div>
               
-              <DataCharts charts={charts} source="World Bank Indicators · scikit-learn analysis" />
+              <DataCharts charts={charts} source="Your query visualized" isLoading={isChartsLoading} />
             </div>
 
             {/* Right panel: chat continuation (30%) */}
@@ -56,6 +62,7 @@ export function ResultsPanel({
               inputValue={chatInput}
               onInputChange={onChatInputChange}
               onSubmit={onChatSubmit}
+              isTyping={isChatLoading}
             />
           </div>
         </div>
