@@ -24,6 +24,7 @@ export function useHomeController() {
   const [charts, setCharts] = useState<ChartData[]>([]);
   const [isChartsLoading, setIsChartsLoading] = useState(false);
   const [isChatLoading, setIsChatLoading] = useState(false);
+  const [scrollToCharts, setScrollToCharts] = useState(false);
 
   // ref used to cancel in-flight polls when a new search is triggered
   const searchAbortRef = useRef<{ cancelled: boolean }>({ cancelled: false });
@@ -69,9 +70,13 @@ export function useHomeController() {
       setHighlights(nextHighlights);
       setConversation([
         { role: "user", content: trimmed },
-        { role: "assistant", content: answer },
+        { role: "assistant", content: answer, web_sources: data.web_sources ?? [] },
       ]);
       setOverlayVisible(true);
+      if (data.show_visualization) {
+        setScrollToCharts(true);
+        setTimeout(() => setScrollToCharts(false), 2500);
+      }
       // Fetch charts in background — updates state when ready
       setIsChartsLoading(true);
       fetchChartData(nextTopic, trimmed)
@@ -103,11 +108,15 @@ export function useHomeController() {
       try {
         const data = await askBackend(trimmed, withUser.slice(0, -1));
         const answer = data.answer ?? "No answer received.";
-        setConversation([...withUser, { role: "assistant", content: answer }]);
+        setConversation([...withUser, { role: "assistant", content: answer, web_sources: data.web_sources ?? [] }]);
         setQuestion(trimmed);
         setTitle(data.title ?? null);
         const nextFollowUpTopic = detectTopic(trimmed, data.sources ?? []);
         setHighlights(extractHighlights(answer));
+        if (data.show_visualization) {
+          setScrollToCharts(true);
+          setTimeout(() => setScrollToCharts(false), 2500);
+        }
         // Refresh charts for every follow-up question
         setIsChartsLoading(true);
         fetchChartData(nextFollowUpTopic, trimmed)
@@ -139,6 +148,7 @@ export function useHomeController() {
     setCharts([]);
     setIsChartsLoading(false);
     setIsChatLoading(false);
+    setScrollToCharts(false);
     setStatusMessage(null);
   }, []);
 
@@ -155,6 +165,7 @@ export function useHomeController() {
     charts,
     isChartsLoading,
     isChatLoading,
+    scrollToCharts,
     search,
     sendChatMessage,
     closeOverlay,

@@ -12,6 +12,7 @@ interface ResultsPanelProps {
   highlights: string[];
   charts: ChartData[];
   isChartsLoading: boolean;
+  scrollToCharts?: boolean;
   conversation: Message[];
   isChatLoading: boolean;
   chatInput: string;
@@ -27,6 +28,7 @@ export function ResultsPanel({
   highlights,
   charts,
   isChartsLoading,
+  scrollToCharts = false,
   conversation,
   isChatLoading,
   chatInput,
@@ -53,7 +55,7 @@ export function ResultsPanel({
                 </div>
               </div>
               
-              <DataCharts charts={charts} source="Your query visualized" isLoading={isChartsLoading} />
+              <DataCharts charts={charts} source="Your query visualized" isLoading={isChartsLoading} highlight={scrollToCharts} />
             </div>
 
             {/* Right panel: chat continuation (30%) */}

@@ -23,10 +23,7 @@ from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
 
 _DATA_DIR = os.path.join(os.path.dirname(__file__), "datasets")
-_df: pd.DataFrame | None = None
-_comp_df: pd.DataFrame | None = None
-_sectors_df: pd.DataFrame | None = None
-_demo_df: pd.DataFrame | None = None
+_cache: dict[str, pd.DataFrame] = {}
 
 # Modern, pleasing color palette
 COLORS = {
@@ -44,32 +41,10 @@ COLORS = {
 PALETTE = list(COLORS.values())
 
 
-def _load() -> pd.DataFrame:
-    global _df
-    if _df is None:
-        _df = pd.read_csv(os.path.join(_DATA_DIR, "chad_indicators.csv"))
-    return _df
-
-
-def _load_comparison() -> pd.DataFrame:
-    global _comp_df
-    if _comp_df is None:
-        _comp_df = pd.read_csv(os.path.join(_DATA_DIR, "chad_neighbors_comparison.csv"))
-    return _comp_df
-
-
-def _load_sectors() -> pd.DataFrame:
-    global _sectors_df
-    if _sectors_df is None:
-        _sectors_df = pd.read_csv(os.path.join(_DATA_DIR, "chad_gdp_sectors.csv"))
-    return _sectors_df
-
-
-def _load_demographics() -> pd.DataFrame:
-    global _demo_df
-    if _demo_df is None:
-        _demo_df = pd.read_csv(os.path.join(_DATA_DIR, "chad_demographics_breakdown.csv"))
-    return _demo_df
+def _load(filename: str = "chad_indicators.csv") -> pd.DataFrame:
+    if filename not in _cache:
+        _cache[filename] = pd.read_csv(os.path.join(_DATA_DIR, filename))
+    return _cache[filename]
 
 
 # ---------------------------------------------------------------------------
@@ -104,15 +79,6 @@ def _series(df: pd.DataFrame, col: str, start: int = 1990) -> tuple[list[int], l
     return sub["year"].tolist(), sub[col].round(2).tolist()
 
 
-def _fmt_num(v: float) -> str:
-    if abs(v) >= 1e9:
-        return f"{v / 1e9:.1f}B"
-    if abs(v) >= 1e6:
-        return f"{v / 1e6:.1f}M"
-    if abs(v) >= 1e3:
-        return f"{v / 1e3:.1f}K"
-    return f"{v:.1f}"
-
 
 # ---------------------------------------------------------------------------
 # Per-topic chart builders
@@ -120,7 +86,7 @@ def _fmt_num(v: float) -> str:
 
 def population_charts(df: pd.DataFrame) -> list[dict]:
     charts = []
-    comp = _load_comparison()
+    comp = _load("chad_neighbors_comparison.csv")
 
     # 1. Population growth — line + linear regression
     years, pop = _series(df, "population_millions")
@@ -156,8 +122,8 @@ def population_charts(df: pd.DataFrame) -> list[dict]:
     })
 
     # 3. Age distribution donut
-    demo = _load_demographics()
-    age_data = demo[demo["group"] == "Age"]
+    age_data = _load("chad_demographics_breakdown.csv")
+    age_data = age_data[age_data["group"] == "Age"]
     charts.append({
         "type": "donut",
         "title": "Age Distribution of Chad's Population",
@@ -213,8 +179,8 @@ def population_charts(df: pd.DataFrame) -> list[dict]:
 
 def economy_charts(df: pd.DataFrame) -> list[dict]:
     charts = []
-    comp = _load_comparison()
-    sectors = _load_sectors()
+    comp = _load("chad_neighbors_comparison.csv")
+    sectors = _load("chad_gdp_sectors.csv")
 
     # 1. GDP sector composition — donut
     charts.append({
@@ -302,7 +268,7 @@ def economy_charts(df: pd.DataFrame) -> list[dict]:
 
 def geography_charts(df: pd.DataFrame) -> list[dict]:
     charts = []
-    comp = _load_comparison()
+    comp = _load("chad_neighbors_comparison.csv")
 
     # 1. Lake Chad area shrinkage — polynomial regression
     years, lake = _series(df, "lake_chad_area_km2")
@@ -376,7 +342,7 @@ def geography_charts(df: pd.DataFrame) -> list[dict]:
 
 def challenges_charts(df: pd.DataFrame) -> list[dict]:
     charts = []
-    comp = _load_comparison()
+    comp = _load("chad_neighbors_comparison.csv")
 
     # 1. Poverty rate with linear trend
     years, poverty = _series(df, "poverty_rate_pct")
@@ -475,8 +441,8 @@ def challenges_charts(df: pd.DataFrame) -> list[dict]:
 
 def general_charts(df: pd.DataFrame) -> list[dict]:
     charts = []
-    comp = _load_comparison()
-    demo = _load_demographics()
+    comp = _load("chad_neighbors_comparison.csv")
+    demo = _load("chad_demographics_breakdown.csv")
 
     # 1. HDI comparison — horizontal bar
     sorted_comp = comp.sort_values("hdi", ascending=True)
@@ -678,7 +644,8 @@ def _build_kaggle_charts(rows: list[dict], query: str, dataset_title: str) -> li
 
     # 3. Scatter of two numeric columns
     if len(num_cols) >= 2 and len(charts) < 3:
-        c1, c2 = [c for c in num_cols if c != year_col][:2] if year_col else num_cols[:2]
+        non_year = [c for c in num_cols if c != year_col] if year_col else num_cols
+        c1, c2 = non_year[:2]
         sub = df[[c1, c2]].dropna().head(50)
         if len(sub) >= 3:
             points = [{"x": float(r[c1]), "y": float(r[c2]), "year": 0, "cluster": 0} for _, r in sub.iterrows()]
@@ -731,10 +698,6 @@ def get_charts_for_topic(topic: str, query: str = "") -> dict:
                             break
         except Exception as exc:
             print(f"Kaggle enrichment skipped: {exc}")
-
-   
-    if kaggle_label:
-        source += f" + Kaggle: {kaggle_label}"
 
     return {
         "charts": charts,

@@ -31,6 +31,18 @@ export function ChatPanel({ conversation, inputValue, onInputChange, onSubmit, i
           <article className={`chat-bubble ${msg.role}`} key={i}>
             <p className="chat-role">{msg.role === "user" ? "You" : "ChadGPT"}</p>
             <div className="chat-text">{msg.content}</div>
+            {msg.role === "assistant" && msg.web_sources && msg.web_sources.length > 0 && (
+              <div className="chat-web-sources">
+                <p className="chat-sources-label">Web Sources</p>
+                <ul className="chat-sources-list">
+                  {msg.web_sources.map((src, j) => (
+                    <li key={j}>
+                      <a href={src.url} target="_blank" rel="noopener noreferrer">{src.title}</a>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </article>
         ))}
         {isTyping && (

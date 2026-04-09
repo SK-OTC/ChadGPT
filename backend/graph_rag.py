@@ -21,20 +21,27 @@ import os
 import pickle
 import threading
 from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from typing import TYPE_CHECKING
 
 import networkx as nx
 import numpy as np
 from pathlib import Path
 from dotenv import load_dotenv
 
+if TYPE_CHECKING:
+    from sentence_transformers import SentenceTransformer
+    from spacy.language import Language as SpacyLanguage
+
 load_dotenv(Path(__file__).resolve().parent.parent / '.env')
 HF_TOKEN = os.environ.get('HF_TOKEN')
 EMBED_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
 CACHE_FILE = os.path.join(os.path.dirname(__file__), "graph_cache.pkl")
-CACHE_VERSION = 3  # bumped from v2 — invalidates old chunk-only caches
+CACHE_VERSION = 4  # bumped from v3 — expanded sources (web pages + PDFs)
 
 # Chad core articles + all bordering countries for cross-country relationship mapping
 CHAD_WIKI_PAGES = [
+    # Core country overviews
     "Chad",
     "N'Djamena",
     "Lake Chad",
@@ -45,6 +52,23 @@ CHAD_WIKI_PAGES = [
     "Tibesti Mountains",
     "Ounianga Lakes",
     "Demographics of Chad",
+    # Society & culture
+    "Culture of Chad",
+    "Education in Chad",
+    "Health in Chad",
+    "Politics of Chad",
+    "Sara people",
+    "Islam in Chad",
+    "Kanuri people",
+    # History & politics
+    "French Equatorial Africa",
+    "Idriss Déby",
+    "2021 Chadian coup d'état",
+    "Chadian Civil War (2005–2010)",
+    # Geography & environment
+    "Sahel",
+    "Lake Chad Basin",
+    "Bodélé Depression",
     # Neighboring countries
     "Niger",
     "Nigeria",
@@ -54,6 +78,20 @@ CHAD_WIKI_PAGES = [
     "Central African Republic",
     # Regional bodies
     "Lake Chad Basin Commission",
+]
+
+# Authoritative static web pages to scrape into the knowledge graph.
+# Pairs of (url, title_hint). Pages that fail (bot-blocked, timeout, etc.)
+# are skipped gracefully — the rest are still loaded.
+CHAD_WEB_URLS: list[tuple[str, str]] = [
+    ("https://www.britannica.com/place/Chad", "Chad — Britannica Encyclopedia"),
+    ("https://www.nationsonline.org/oneworld/chad.htm", "Chad — Nations Online"),
+    ("https://www.worldatlas.com/africa/chad.html", "Chad — World Atlas"),
+    ("https://www.bbc.com/news/world-africa-13096708", "Chad Country Profile — BBC News"),
+    ("https://www.worldbank.org/en/country/chad/overview", "Chad — World Bank Country Overview"),
+    ("https://reliefweb.int/country/tcd", "Chad — ReliefWeb Humanitarian Data"),
+    ("https://www.unicef.org/chad", "Chad — UNICEF"),
+    ("https://www.afdb.org/en/countries/central-africa/chad", "Chad — African Development Bank"),
 ]
 
 # Explicit geopolitical triples — always wired into the graph regardless of NER
@@ -91,13 +129,13 @@ class ChadGraphRAG:
     """
 
     def __init__(self):
-        self.embedder = None
-        self.nlp = None
+        self.embedder: "SentenceTransformer | None" = None
+        self.nlp: "SpacyLanguage | str | None" = None
         self.graph: nx.Graph = nx.Graph()
         self.chunks: list[str] = []
         self.chunk_metadata: list[dict] = []
-        self.embeddings: np.ndarray | None = None
-        self.norm_embeddings: np.ndarray | None = None  # pre-normalized for fast cosine search
+        self.embeddings: "np.ndarray[tuple[int, int], np.dtype[np.float32]] | None" = None
+        self.norm_embeddings: "np.ndarray[tuple[int, int], np.dtype[np.float32]] | None" = None  # pre-normalized for fast cosine search
         self._entity_to_node: dict[str, int] = {}
         self._lock = threading.Lock()
         self._initialized = False
@@ -133,7 +171,8 @@ class ChadGraphRAG:
         """Return entity strings from a chunk using spaCy NER or keyword fallback."""
         if self.nlp == "fallback" or self.nlp is None:
             return self._keyword_entities(text)
-        doc = self.nlp(text[:5000])
+        nlp: "SpacyLanguage" = self.nlp  # type: ignore[assignment]
+        doc = nlp(text[:5000])
         entities: set[str] = set()
         for ent in doc.ents:
             if ent.label_ in RELEVANT_NER_LABELS:
@@ -154,33 +193,134 @@ class ChadGraphRAG:
         text_lower = text.lower()
         return {e for e in known if e.lower() in text_lower}
 
-    def _fetch_wikipedia(self) -> list[dict]:
-        """Fetch Wikipedia pages: Chad core topics + all 6 bordering countries."""
+    def _fetch_one_wikipedia(self, query: str) -> list[dict]:
+        """Fetch a single Wikipedia page by query string. Returns [] on failure."""
         try:
             from langchain_community.document_loaders import WikipediaLoader
         except ImportError:
             raise ImportError("langchain-community is required. Run: pip install langchain-community wikipedia")
+        results: list[dict] = []
+        try:
+            loader = WikipediaLoader(query=query, load_max_docs=1, doc_content_chars_max=15000)
+            docs = loader.load()
+            for doc in docs:
+                title = doc.metadata.get("title", query)
+                results.append({
+                    "title": title,
+                    "content": doc.page_content,
+                    "url": doc.metadata.get("source", "https://en.wikipedia.org"),
+                })
+                print(f"  Fetched: {title} ({len(doc.page_content):,} chars)")
+        except Exception as exc:
+            print(f"  Warning: could not fetch '{query}': {exc}")
+        return results
+
+    def _fetch_wikipedia(self) -> list[dict]:
+        """Fetch all Wikipedia pages in parallel using a thread pool."""
+        try:
+            from langchain_community.document_loaders import WikipediaLoader  # noqa: F401
+        except ImportError:
+            raise ImportError("langchain-community is required. Run: pip install langchain-community wikipedia")
+
+        seen_titles: set[str] = set()
+        documents: list[dict] = []
+
+        # ThreadPoolExecutor is safe here: WikipediaLoader uses the `wikipedia`
+        # package which performs independent HTTPS requests per page.
+        with ThreadPoolExecutor(max_workers=8, thread_name_prefix="wiki") as pool:
+            futures = {pool.submit(self._fetch_one_wikipedia, q): q for q in CHAD_WIKI_PAGES}
+            for future in as_completed(futures):
+                for doc in future.result():
+                    if doc["title"] not in seen_titles:
+                        seen_titles.add(doc["title"])
+                        documents.append(doc)
+
+        return documents
+
+    def _fetch_one_web_page(self, url: str, title_hint: str) -> dict | None:
+        """Fetch and clean a single web page. Returns None on failure."""
+        try:
+            import requests as req_lib
+            from bs4 import BeautifulSoup
+        except ImportError:
+            return None
+        headers = {"User-Agent": "Mozilla/5.0 (compatible; ChadGPT-research/1.0) Gecko/20100101"}
+        try:
+            resp = req_lib.get(url, timeout=12, headers=headers)
+            resp.raise_for_status()
+            soup = BeautifulSoup(resp.text, "html.parser")
+            for tag in soup(["script", "style", "nav", "footer", "header", "aside", "form", "button"]):
+                tag.decompose()
+            lines = [line.strip() for line in soup.get_text(separator="\n").splitlines() if line.strip()]
+            clean_text = "\n".join(lines)
+            if len(clean_text) > 200:
+                print(f"  Fetched web: {title_hint} ({len(clean_text):,} chars)")
+                return {"title": title_hint, "content": clean_text[:25000], "url": url}
+        except Exception as exc:
+            print(f"  Warning: web page '{title_hint}' skipped: {exc}")
+        return None
+
+    def _fetch_web_pages(self) -> list[dict]:
+        """Scrape curated Chad-specific web pages in parallel."""
+        try:
+            import requests  # noqa: F401
+            from bs4 import BeautifulSoup  # noqa: F401
+        except ImportError:
+            print("Graph RAG: beautifulsoup4 not installed — skipping web pages. Run: pip install beautifulsoup4")
+            return []
 
         documents: list[dict] = []
-        seen_titles: set[str] = set()
+        with ThreadPoolExecutor(max_workers=8, thread_name_prefix="web") as pool:
+            futures = {pool.submit(self._fetch_one_web_page, url, hint): hint for url, hint in CHAD_WEB_URLS}
+            for future in as_completed(futures):
+                result = future.result()
+                if result:
+                    documents.append(result)
+        return documents
 
-        for query in CHAD_WIKI_PAGES:
+    def _fetch_pdfs(self) -> list[dict]:
+        """Load all *.pdf files from the backend/pdfs/ directory.
+
+        Supported libraries (tried in order): pypdf, PyPDF2.
+        If neither is installed the step is silently skipped.
+
+        To use: create a backend/pdfs/ folder and place any Chad-related PDF
+        reports (World Bank, UNDP, UNHCR, IMF, NGOs, etc.) there — they are
+        automatically embedded into the knowledge graph on the next build.
+        Delete graph_cache.pkl to force a rebuild after adding new PDFs.
+        """
+        documents: list[dict] = []
+        pdf_dir = os.path.join(os.path.dirname(__file__), "pdfs")
+        if not os.path.isdir(pdf_dir):
+            return documents  # folder not yet created — skip silently
+
+        try:
+            from pypdf import PdfReader
+        except ImportError:
             try:
-                loader = WikipediaLoader(query=query, load_max_docs=1, doc_content_chars_max=15000)
-                docs = loader.load()
-                for doc in docs:
-                    title = doc.metadata.get("title", query)
-                    if title in seen_titles:
-                        continue
-                    seen_titles.add(title)
+                from PyPDF2 import PdfReader  # type: ignore[import-untyped, no-redef]
+            except ImportError:
+                print("Graph RAG: pypdf not installed — skipping PDFs. Run: pip install pypdf")
+                return documents
+
+        for pdf_path in sorted(Path(pdf_dir).glob("*.pdf")):
+            try:
+                reader = PdfReader(str(pdf_path))
+                pages_text = [
+                    page.extract_text()
+                    for page in reader.pages
+                    if page.extract_text()
+                ]
+                full_text = "\n\n".join(pages_text).strip()
+                if full_text:
                     documents.append({
-                        "title": title,
-                        "content": doc.page_content,
-                        "url": doc.metadata.get("source", "https://en.wikipedia.org"),
+                        "title": pdf_path.stem.replace("_", " ").title(),
+                        "content": full_text[:40000],
+                        "url": f"file://pdfs/{pdf_path.name}",
                     })
-                    print(f"  Fetched: {title} ({len(doc.page_content):,} chars)")
+                    print(f"  Loaded PDF: {pdf_path.name} ({len(reader.pages)} pages)")
             except Exception as exc:
-                print(f"  Warning: could not fetch '{query}': {exc}")
+                print(f"  Warning: PDF '{pdf_path.name}' skipped: {exc}")
 
         return documents
 
@@ -245,11 +385,25 @@ class ChadGraphRAG:
         chunk_entities: list[set[str]] = []
         entity_freq: dict[str, int] = defaultdict(int)
 
-        for chunk in self.chunks:
-            ents = self._extract_entities(chunk)
-            chunk_entities.append(ents)
-            for e in ents:
-                entity_freq[e] += 1
+        if self.nlp != "fallback" and self.nlp is not None:
+            nlp: "SpacyLanguage" = self.nlp  # type: ignore[assignment]
+            # nlp.pipe() processes all chunks in batches — 3-5× faster than one-by-one
+            for doc in nlp.pipe(self.chunks, batch_size=64):
+                ents: set[str] = set()
+                for ent in doc.ents:
+                    if ent.label_ in RELEVANT_NER_LABELS:
+                        normalized = ent.text.strip().title()
+                        if len(normalized) > 2:
+                            ents.add(normalized)
+                chunk_entities.append(ents)
+                for e in ents:
+                    entity_freq[e] += 1
+        else:
+            for chunk in self.chunks:
+                ents = self._keyword_entities(chunk)
+                chunk_entities.append(ents)
+                for e in ents:
+                    entity_freq[e] += 1
 
         # --- Entity nodes (appear in ≥ MIN_ENTITY_FREQ chunks) ---
         entity_node_id = n_chunks
@@ -320,6 +474,7 @@ class ChadGraphRAG:
                         self.chunks = cache["chunks"]
                         self.chunk_metadata = cache["metadata"]
                         self.embeddings = cache["embeddings"].astype(np.float32)
+                        assert self.embeddings is not None
                         norms = np.linalg.norm(self.embeddings, axis=1, keepdims=True)
                         self.norm_embeddings = self.embeddings / (norms + 1e-8)
                         self.graph = cache["graph"]
@@ -343,22 +498,25 @@ class ChadGraphRAG:
                         self.graph = nx.Graph()
 
                 # ---- Fresh build ----
-                print("Graph RAG: Fetching Wikipedia (Chad + neighboring countries)...")
+                print("Graph RAG: Fetching Wikipedia, web pages, and PDFs...")
                 self._load_embedder()
 
                 documents = self._fetch_wikipedia()
+                documents.extend(self._fetch_web_pages())
+                documents.extend(self._fetch_pdfs())
                 if not documents:
                     print("Graph RAG: No documents fetched; graph RAG disabled.")
                     self._initialized = True
                     return
 
-                print(f"Graph RAG: Splitting {len(documents)} articles...")
+                print(f"Graph RAG: Splitting {len(documents)} documents ({len(documents)} sources)...")
                 self.chunks, self.chunk_metadata = self._split_documents(documents)
                 print(f"Graph RAG: {len(self.chunks)} chunks created.")
 
                 print("Graph RAG: Computing embeddings...")
+                assert self.embedder is not None
                 self.embeddings = np.array(
-                    self.embedder.encode(self.chunks, show_progress_bar=False),
+                    self.embedder.encode(self.chunks, batch_size=64, show_progress_bar=False),
                     dtype=np.float32,
                 )
                 norms = np.linalg.norm(self.embeddings, axis=1, keepdims=True)
@@ -412,12 +570,14 @@ class ChadGraphRAG:
             return []
 
         self._load_embedder()
+        assert self.embedder is not None
 
         q_emb = np.array(
             self.embedder.encode([query], show_progress_bar=False),
             dtype=np.float32,
         )
 
+        assert self.norm_embeddings is not None
         q_norm = q_emb / (np.linalg.norm(q_emb) + 1e-8)
         scores = (self.norm_embeddings @ q_norm.T).flatten()
 

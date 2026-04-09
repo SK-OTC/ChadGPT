@@ -14,8 +14,8 @@ coverage
 
 # logs
 logs
-_.log
-report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
+*.log
+report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 
 # dotenv environment variable files
 .env
@@ -34,9 +34,32 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 
 # Finder (MacOS) folder config
 .DS_Store
+# Windows thumbnails
+Thumbs.db
 
 # Python virtual environments
 venv/
 .venv/
 __pycache__/
 *.pyc
+*.pyo
+
+# Python packaging / tooling artifacts
+*.egg-info/
+*.egg
+.pytest_cache/
+.mypy_cache/
+
+# Graph RAG cache (large binary — rebuilt automatically on startup)
+*.pkl
+backend/graph_cache.pkl
+
+# Kaggle dataset download cache
+backend/datasets/.kaggle_cache/
+
+# PDFs added to the knowledge base (large files, not part of source)
+backend/pdfs/*.pdf
+
+# HuggingFace model cache (downloaded at runtime)
+.huggingface/
+

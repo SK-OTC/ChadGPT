@@ -1,6 +1,7 @@
 // View sub-component — renders scikit-learn analysis results as SVG charts.
 // Supports line (with optional dashed trend), grouped bar, and scatter chart types.
 
+import { useEffect, useRef } from "react";
 import type { ChartData, ChartSeries, ScatterPoint, DonutSlice } from "../model/chad-data";
 
 // ---------------------------------------------------------------------------
@@ -363,12 +364,22 @@ interface DataChartsProps {
   charts: ChartData[];
   source?: string;
   isLoading?: boolean;
+  highlight?: boolean;
 }
 
-export function DataCharts({ charts, source, isLoading = false }: DataChartsProps) {
+export function DataCharts({ charts, source, isLoading = false, highlight = false }: DataChartsProps) {
+  const sectionRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    if (!highlight) return;
+    sectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    sectionRef.current?.classList.add("charts-highlight-pulse");
+    const t = setTimeout(() => sectionRef.current?.classList.remove("charts-highlight-pulse"), 2000);
+    return () => clearTimeout(t);
+  }, [highlight]);
   if (isLoading) {
     return (
-      <section className="analysis-section">
+      <section ref={sectionRef} className="analysis-section">
         <div className="analysis-header">
           <span className="analysis-label">Data Analysis</span>
           <span className="analysis-source">Fetching visualizations…</span>
@@ -390,7 +401,7 @@ export function DataCharts({ charts, source, isLoading = false }: DataChartsProp
   if (!charts?.length) return null;
 
   return (
-    <section className="analysis-section">
+    <section ref={sectionRef} className="analysis-section">
       <div className="analysis-header">
         <span className="analysis-label">Data Analysis</span>
         {source && <span className="analysis-source">{source}</span>}

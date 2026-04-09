@@ -66,24 +66,33 @@ CORS(app, resources={
 })
 
 
-def is_about_chad(query):
-    """Check if question is about Chad"""
-    chad_keywords = ['chad', 'chadian', 'n\'djamena', 'ndjamena', 'zakouma', 'tibesti', 'ennedi', 'lake chad']
-    query_lower = query.lower()
-    
-    # Check for Chad keywords
-    for keyword in chad_keywords:
-        if keyword in query_lower:
-            return True
-    
-    # Check if other countries are mentioned
-    other_countries = ['france', 'usa', 'nigeria', 'libya', 'sudan', 'niger', 'cameroon', 'india', 'china']
-    for country in other_countries:
-        if re.search(rf'\b{country}\b', query_lower):
-            return False
-    
-    # Assume it's about Chad if no other country mentioned
+_CHAD_SUBJECT = re.compile(
+    r"chad(?:ian)?|n['\u2019]?djamena|ndjamena|zakouma|tibesti|ennedi|lake\s+chad",
+    re.IGNORECASE,
+)
+_OTHER_COUNTRY = re.compile(
+    r"\b(france|usa|nigeria|libya|sudan|niger|cameroon|india|china)\b",
+    re.IGNORECASE,
+)
+
+
+def is_about_chad(query: str) -> bool:
+    if _CHAD_SUBJECT.search(query):
+        return True
+    if _OTHER_COUNTRY.search(query):
+        return False
     return True
+
+
+_VIZ_PATTERNS = re.compile(
+    r'\b(graph|chart|plot|visuali[sz]e?|show.{0,20}data|trend|statistics|diagram|visual|display.{0,10}data)\b',
+    re.IGNORECASE,
+)
+
+
+def is_visualization_request(question: str) -> bool:
+    """Return True when the user is asking for a chart or data visualization."""
+    return bool(_VIZ_PATTERNS.search(question))
 
 
 @app.route('/api/graph-stats', methods=['GET'])
@@ -102,6 +111,7 @@ def graph_ask():
     data = request.json
     question = data.get('question', '')
     history: list[dict] = data.get('history', [])
+    show_viz = is_visualization_request(question)
 
     if not question:
         return jsonify({'error': 'No question provided'}), 400
@@ -112,6 +122,7 @@ def graph_ask():
             'title': None,
             'sources': [],
             'graph_sources': [],
+            'show_visualization': False,
         })
 
     graph_rag = get_graph_rag()
@@ -124,6 +135,7 @@ def graph_ask():
             'sources': [],
             'graph_sources': [],
             'web_sources': [],
+            'show_visualization': False,
         })
 
     graph_results = graph_rag.search(question, top_k=5)
@@ -157,6 +169,11 @@ def graph_ask():
         "- After your answer, cite your source on a new line in the format: Source: <title>\n"
         "- After the source, write a 2-5 word topic title on a new line in the format: Topic: <title>\n"
     )
+    if show_viz:
+        system_prompt += (
+            "- The user is requesting a chart or visualization. After your answer, add this exact sentence "
+            "on a new line: 'Please check the **Data Visualization** panel — I have loaded charts for your query.'\n"
+        )
 
     # Few-shot examples to enforce output format
     few_shot = [
@@ -202,6 +219,7 @@ def graph_ask():
                             'sources': list(seen_titles),
                             'graph_sources': graph_sources,
                             'web_sources': web_sources,
+                            'show_visualization': show_viz,
                         })
         except Exception as exc:
             print(f'Graph-ask API error ({model}): {exc}')
@@ -217,6 +235,7 @@ def graph_ask():
         'sources': list(seen_titles),
         'graph_sources': graph_sources,
         'web_sources': web_sources,
+        'show_visualization': show_viz,
     })
 
 
@@ -245,14 +264,23 @@ def analyze():
 
 
 # Start Graph RAG background initialization only in the actual serving process.
-# When Werkzeug debug reloader is active it spawns a child process with WERKZEUG_RUN_MAIN='true'.
-# Skip init in the parent/watcher process to avoid duplicate Wikipedia fetches.
-_is_reloader_child = os.environ.get('WERKZEUG_RUN_MAIN') == 'true'
-_is_direct_run = os.environ.get('WERKZEUG_RUN_MAIN') is None
-if _is_reloader_child or _is_direct_run:
+#
+# Process matrix:
+#   flask run --debug  → parent watcher: FLASK_RUN_FROM_CLI=true, WERKZEUG_RUN_MAIN=None  → SKIP
+#                      → child worker:  FLASK_RUN_FROM_CLI=true, WERKZEUG_RUN_MAIN=true   → INIT
+#   python server.py   → use_reloader=False, so only one process:  WERKZEUG_RUN_MAIN=None → INIT
+#   gunicorn/prod      → no werkzeug env vars                                            → INIT
+_in_reloader_child = os.environ.get('WERKZEUG_RUN_MAIN') == 'true'
+_in_direct_run = (
+    os.environ.get('WERKZEUG_RUN_MAIN') is None
+    and os.environ.get('FLASK_RUN_FROM_CLI') != 'true'
+)
+if _in_reloader_child or _in_direct_run:
     init_graph_rag_async()
 
 
 if __name__ == '__main__':
     print("ChadGPT backend — http://localhost:8000")
-    app.run(debug=True, host="0.0.0.0", port=8000)
+    # use_reloader=False prevents Werkzeug from spawning a second process,
+    # which would cause the graph RAG to be initialized twice.
+    app.run(debug=True, host="0.0.0.0", port=8000, use_reloader=False)

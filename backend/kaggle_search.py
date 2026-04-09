@@ -13,24 +13,51 @@ import csv
 import tempfile
 import hashlib
 from pathlib import Path
+from typing import TYPE_CHECKING
+from dotenv import load_dotenv
+
+if TYPE_CHECKING:
+    from kaggle.api.kaggle_api_extended import KaggleApi
+
+# Load .env so KAGGLE_USERNAME / KAGGLE_KEY are available before KaggleApi reads them
+load_dotenv(Path(__file__).resolve().parent.parent / ".env")
+
+# The Kaggle library reads credentials from env vars OR ~/.kaggle/kaggle.json.
+# Explicitly propagate the env values so the library always finds them.
+_username = os.getenv("KAGGLE_USERNAME", "")
+_key = os.getenv("KAGGLE_KEY", "")
+if _username:
+    os.environ["KAGGLE_USERNAME"] = _username
+if _key:
+    os.environ["KAGGLE_KEY"] = _key
 
 _CACHE_DIR = Path(__file__).resolve().parent / "datasets" / ".kaggle_cache"
 _AVAILABLE = False
+_api_singleton: "KaggleApi | None" = None
+_api_resolved = False
 
 try:
-    from kaggle.api.kaggle_api_extended import KaggleApi  # type: ignore[import-untyped]
+    from kaggle.api.kaggle_api_extended import KaggleApi  # type: ignore[import-untyped]  # noqa: F811
     _AVAILABLE = True
 except ImportError:
     pass
 
 
 def _get_api() -> "KaggleApi | None":
-    """Authenticate with Kaggle. Returns None if credentials are missing."""
+    """Authenticate with Kaggle once and cache the result."""
+    global _api_singleton, _api_resolved
+    if _api_resolved:
+        return _api_singleton
+    _api_resolved = True
     if not _AVAILABLE:
+        return None
+    if not (_username and _key):
+        print("Kaggle: KAGGLE_USERNAME or KAGGLE_KEY not set in .env — skipping.")
         return None
     try:
         api = KaggleApi()
         api.authenticate()
+        _api_singleton = api
         return api
     except Exception as exc:
         print(f"Kaggle auth failed: {exc}")
@@ -52,8 +79,12 @@ def search_datasets(topic: str, max_results: int = 3) -> list[dict]:
 
     for q in queries:
         try:
-            datasets = api.dataset_list(search=q, sort_by="relevance", max_size=50_000_000)
+            datasets = api.dataset_list(search=q, sort_by="hottest")
+            if not datasets:
+                continue
             for ds in datasets[:max_results]:
+                if ds is None:
+                    continue
                 ref = str(ds.ref)
                 if ref in seen_refs:
                     continue
@@ -61,7 +92,7 @@ def search_datasets(topic: str, max_results: int = 3) -> list[dict]:
                 results.append({
                     "ref": ref,
                     "title": str(ds.title),
-                    "size": int(ds.size) if ds.size else 0,
+                    "size": int(ds.total_bytes) if ds.total_bytes else 0,
                     "description": str(ds.subtitle or ""),
                 })
         except Exception as exc:

@@ -19,7 +19,11 @@ export type TopicKey =
   | "challenges"
   | "general";
 
-export type Message = { role: "user" | "assistant"; content: string };
+export type Message = {
+  role: "user" | "assistant";
+  content: string;
+  web_sources?: { title: string; url: string }[];
+};
 
 export type AskResponse = {
   answer?: string;
@@ -27,6 +31,7 @@ export type AskResponse = {
   sources?: string[];
   graph_sources?: { title: string; url: string }[];
   web_sources?: { title: string; url: string }[];
+  show_visualization?: boolean;
 };
 
 export type ChartSeries = { label: string; data: number[]; color: string; dashed?: boolean };

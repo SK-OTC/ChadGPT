@@ -19,6 +19,7 @@ export function App() {
         highlights={ctrl.highlights}
         charts={ctrl.charts}
         isChartsLoading={ctrl.isChartsLoading}
+        scrollToCharts={ctrl.scrollToCharts}
         conversation={ctrl.conversation}
         isChatLoading={ctrl.isChatLoading}
         chatInput={ctrl.chatInput}

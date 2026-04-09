@@ -6,14 +6,17 @@ Returned results are raw enough to be fed directly into the LLM context.
 """
 
 import re
-from typing import TypedDict
+from typing import TYPE_CHECKING, TypedDict
+
+if TYPE_CHECKING:
+    from ddgs import DDGS
 
 try:
-    from ddgs import DDGS
+    from ddgs import DDGS  # type: ignore[assignment]  # noqa: F811
     _DDGS_AVAILABLE = True
 except ImportError:
     try:
-        from duckduckgo_search import DDGS  # older installs
+        from duckduckgo_search import DDGS  # type: ignore[assignment, no-redef]  # noqa: F811
         _DDGS_AVAILABLE = True
     except ImportError:
         _DDGS_AVAILABLE = False
